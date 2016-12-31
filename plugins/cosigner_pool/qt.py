@@ -43,8 +43,8 @@ import sys
 import traceback
 
 
-PORT = 12344
-HOST = 'cosigner.electrum.org'
+#PORT = 12344
+#HOST = 'cosigner.electrum.org'
 server = xmlrpclib.ServerProxy('http://%s:%d'%(HOST,PORT), allow_none=True)
 
 

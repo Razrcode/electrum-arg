@@ -1,3 +1,6 @@
+# Release 2.7.13.1
+  * Disable cosigner and labels
+
 # Release 2.7.13
   * fix message signing with imported keys
   * add size to transaction details window

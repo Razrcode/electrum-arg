@@ -80,7 +80,7 @@ class BaseWizard(object):
         wallet_kinds = [
             ('standard',  _("Standard wallet")),
         #    ('2fa', _("Wallet with two-factor authentication")),
-            ('multisig',  _("Multi-signature wallet")),
+        #    ('multisig',  _("Multi-signature wallet")),
             ('imported',  _("Watch Bitcoin addresses")),
         ]
         choices = [pair for pair in wallet_kinds if pair[0] in wallet_types]
@@ -95,8 +95,8 @@ class BaseWizard(object):
         self.wallet_type = choice
         if choice == 'standard':
             action = 'choose_keystore'
-        elif choice == 'multisig':
-            action = 'choose_multisig'
+        #elif choice == 'multisig':
+        #    action = 'choose_multisig'
         #elif choice == '2fa':
         #    self.load_2fa()
         #    action = self.storage.get_action()
@@ -104,13 +104,13 @@ class BaseWizard(object):
             action = 'import_addresses'
         self.run(action)
 
-    def choose_multisig(self):
-        def on_multisig(m, n):
-            self.multisig_type = "%dof%d"%(m, n)
-            self.storage.put('wallet_type', self.multisig_type)
-            self.n = n
-            self.run('choose_keystore')
-        self.multisig_dialog(run_next=on_multisig)
+    # def choose_multisig(self):
+    #     def on_multisig(m, n):
+    #         self.multisig_type = "%dof%d"%(m, n)
+    #         self.storage.put('wallet_type', self.multisig_type)
+    #         self.n = n
+    #         self.run('choose_keystore')
+    #     self.multisig_dialog(run_next=on_multisig)
 
     def choose_keystore(self):
         assert self.wallet_type in ['standard', 'multisig']
