@@ -1,3 +1,4 @@
+
 ELECTRUM_VERSION = '2.7.12.3b' # version of the client package
 PROTOCOL_VERSION = '0.10'   # protocol version requested
 
