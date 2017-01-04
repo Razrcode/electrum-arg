@@ -765,7 +765,7 @@ class Transaction:
         return out
 
 
-    def required_fee(self, wallet):
+    def requires_fee(self, wallet):
         # see https://en.bitcoin.it/wiki/Transaction_fees
         size = len(self.serialize(-1))/2
         fee = 0
