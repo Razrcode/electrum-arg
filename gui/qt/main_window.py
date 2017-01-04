@@ -969,28 +969,15 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
         vbox.addWidget(self.invoices_label)
         vbox.addWidget(self.invoice_list)
         vbox.setStretchFactor(self.invoice_list, 1000)
-
         # Defer this until grid is parented to avoid ugly flash during startup
 
         self.update_fee_edit()
-
         run_hook('create_send_tab', grid)
         return w
 
-
     def spend_max(self):
-        inputs = self.get_coins()
-        sendable = sum(map(lambda x:x['value'], inputs))
-        fee = self.fee_e.get_amount() if self.fee_e.isModified() else None
-        r = self.get_payto_or_dummy()
-        amount, fee = self.wallet.get_max_amount(self.config, inputs, r, fee)
-        if not self.fee_e.isModified():
-            self.fee_e.setAmount(fee)
-        self.amount_e.setAmount(amount)
-        self.not_enough_funds = (fee + amount > sendable)
-        # emit signal for fiat_amount update
-        self.amount_e.textEdited.emit("")
         self.is_max = True
+        self.do_update_fee()
 
     def reset_max(self):
         self.is_max = False
@@ -1010,14 +997,14 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
         '''
         freeze_fee = (self.fee_e.isModified()
                       and (self.fee_e.text() or self.fee_e.hasFocus()))
-        amount = self.amount_e.get_amount()
+        amount = '!' if self.is_max else self.amount_e.get_amount()
         if amount is None:
             if not freeze_fee:
                 self.fee_e.setAmount(None)
             self.not_enough_funds = False
         else:
             fee = self.fee_e.get_amount() if freeze_fee else None
-            outputs = self.payto_e.get_outputs()
+            outputs = self.payto_e.get_outputs(self.is_max)
             if not outputs:
                 _type, addr = self.get_payto_or_dummy()
                 outputs = [(_type, addr, amount)]
@@ -1029,6 +1016,11 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
             if not freeze_fee:
                 fee = None if self.not_enough_funds else self.wallet.get_tx_fee(tx)
                 self.fee_e.setAmount(fee)
+
+            if self.is_max:
+                amount = tx.output_value()
+                self.amount_e.setAmount(amount)
+
 
     def update_fee_edit(self):
         self.fee_e.setVisible
@@ -1106,7 +1098,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
             if errors:
                 self.show_warning(_("Invalid Lines found:") + "\n\n" + '\n'.join([ _("Line #") + str(x[0]+1) + ": " + x[1] for x in errors]))
                 return
-            outputs = self.payto_e.get_outputs()
+            outputs = self.payto_e.get_outputs(self.is_max)
 
             if self.payto_e.is_alias and self.payto_e.validated is False:
                 alias = self.payto_e.toPlainText()
@@ -1148,7 +1140,6 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
         if not r:
             return
         outputs, fee, tx_desc, coins = r
-        amount = sum(map(lambda x:x[2], outputs))
         try:
             tx = self.wallet.make_unsigned_transaction(coins, outputs, self.config, fee)
         except NotEnoughFunds:
@@ -1159,7 +1150,9 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
             self.show_message(str(e))
             return
 
-        if tx.get_fee() < tx.required_fee(self.wallet):
+        amount = tx.output_value() if self.is_max else sum(map(lambda x:x[2], outputs))
+
+        if tx.get_fee() < self.wallet.relayfee() * tx.estimated_size() / 1000 and tx.requires_fee(self.wallet):
             self.show_error(_("This transaction requires a higher fee, or it will not be propagated by the network"))
             return
 
