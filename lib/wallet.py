@@ -65,6 +65,7 @@ import paymentrequest
 from storage import WalletStorage
 
 TX_STATUS = [
+    _('Replaceable'),
     _('Unconfirmed parent'),
     _('Low fee'),
     _('Unconfirmed'),
@@ -762,26 +763,19 @@ class Abstract_Wallet(PrintError):
             tx = self.transactions.get(tx_hash)
             if not tx:
                 return 3, 'unknown'
-            is_final = tx and tx.is_final()
             fee = self.tx_fees.get(tx_hash)
             if fee and self.network:
                 size = len(tx.raw)/2
-            else:
-                is_lowfee = False
-            if height==0 and not is_final:
-                status = 0
-            elif height < 0:
-                status = 1
-            elif height == 1:
-                status = 2
-            elif height == 0:
+            if height==0:
                 status = 3
+            elif height < 0:
+                status = 4
             else:
                 status = 4
         else:
             status = 4 + min(conf, 6)
         time_str = format_time(timestamp) if timestamp else _("unknown")
-        status_str = TX_STATUS[status] if status < 4 else time_str
+        status_str = TX_STATUS[status] if status < 5 else time_str
         return status, status_str
 
     def relayfee(self):
