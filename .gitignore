@@ -15,4 +15,4 @@ packages
 env/
 .tox/
 .buildozer/
-bin/
+*.idea
