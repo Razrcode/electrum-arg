@@ -6,6 +6,8 @@ import os
 from copy import deepcopy
 from util import user_dir, print_error, print_msg, print_stderr, PrintError
 
+from bitcoin import MAX_FEE_RATE
+
 SYSTEM_CONFIG_PATH = "/etc/electrum-arg.conf"
 
 config = None
@@ -39,6 +41,8 @@ class SimpleConfig(PrintError):
         # This lock needs to be acquired for updating and reading the config in
         # a thread-safe way.
         self.lock = threading.RLock()
+
+        self.fee_estimates = {}
 
         # The following two functions are there for dependency injection when
         # testing.
@@ -75,6 +79,9 @@ class SimpleConfig(PrintError):
         path = self.get('electrum_path')
         if path is None:
             path = self.user_dir()
+
+        if self.get('testnet'):
+            path = os.path.join(path, 'testnet')
 
         # Make directory if it does not yet exist.
         if not os.path.exists(path):
@@ -187,6 +194,15 @@ class SimpleConfig(PrintError):
             path = wallet.storage.path
             self.set_key('gui_last_wallet', path)
 
+    def max_fee_rate(self):
+        return self.get('max_fee_rate', MAX_FEE_RATE)
+
+    def has_fee_estimates(self):
+        return len(self.fee_estimates)==4
+
+    def fee_per_kb(self):
+        fee_rate = self.get('fee_per_kb', self.max_fee_rate()/2)
+        return fee_rate
 
 def read_system_config(path=SYSTEM_CONFIG_PATH):
     """Parse and return the system config settings in /etc/electrum-arg.conf."""

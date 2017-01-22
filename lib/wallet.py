@@ -306,7 +306,6 @@ class Abstract_Wallet(PrintError):
         self.unverified_tx.pop(tx_hash, None)
         with self.lock:
             self.verified_tx[tx_hash] = info  # (tx_height, timestamp, pos)
-        self.storage.put('verified_tx3', self.verified_tx)
         height, conf, timestamp = self.get_tx_height(tx_hash)
         self.network.trigger_callback('verified', tx_hash, height, conf, timestamp)
 
@@ -532,7 +531,10 @@ class Abstract_Wallet(PrintError):
                     u -= v
         return c, u, x
 
-    def get_spendable_coins(self, domain = None, exclude_frozen = True):
+    def get_spendable_coins(self, domain = None):
+        return self.get_utxos(domain, exclude_frozen=True, mature=True)
+
+    def get_utxos(self, domain = None, exclude_frozen = False, mature = False):
         coins = []
         if domain is None:
             domain = self.get_addresses()
@@ -541,7 +543,7 @@ class Abstract_Wallet(PrintError):
         for addr in domain:
             utxos = self.get_addr_utxo(addr)
             for x in utxos:
-                if x['coinbase'] and x['height'] + COINBASE_MATURITY > self.get_local_height():
+                if mature and x['coinbase'] and x['height'] + COINBASE_MATURITY > self.get_local_height():
                     continue
                 coins.append(x)
                 continue
@@ -662,7 +664,6 @@ class Abstract_Wallet(PrintError):
 
     def receive_tx_callback(self, tx_hash, tx, tx_height):
         self.add_transaction(tx_hash, tx)
-        self.save_transactions()
         self.add_unverified_tx(tx_hash, tx_height)
 
     def receive_history_callback(self, addr, hist, tx_fees):
@@ -688,8 +689,6 @@ class Abstract_Wallet(PrintError):
             if tx is not None and self.txi.get(tx_hash, {}).get(addr) is None and self.txo.get(tx_hash, {}).get(addr) is None:
                 self.add_transaction(tx_hash, tx)
 
-        # Write updated TXI, TXO etc.
-        self.save_transactions()
         # Store fees
         self.tx_fees.update(tx_fees)
 
@@ -754,9 +753,6 @@ class Abstract_Wallet(PrintError):
             return ', '.join(labels)
         return ''
 
-    def fee_per_kb(self, config):
-        return config.get('fee_per_kb', bitcoin.MIN_RELAY_TX_FEE)
-
     def get_tx_status(self, tx_hash, height, conf, timestamp):
         from util import format_time
         if conf == 0:
@@ -805,7 +801,7 @@ class Abstract_Wallet(PrintError):
                     raise BaseException("More than one output set to spend max")
                 i_max = i
 
-        # Avoid index-out-of-range with coins[0] below
+        # Avoid index-out-of-range with inputs[0] below
         if not inputs:
             raise NotEnoughFunds()
 
@@ -826,7 +822,7 @@ class Abstract_Wallet(PrintError):
                 if not change_addrs:
                     change_addrs = [random.choice(addrs)]
             else:
-                change_addrs = [coins[0]['address']]
+                change_addrs = [inputs[0]['address']]
 
         # Fee estimator
         if fixed_fee is None:
@@ -955,6 +951,8 @@ class Abstract_Wallet(PrintError):
             # Now no references to the syncronizer or verifier
             # remain so they will be GC-ed
             self.storage.put('stored_height', self.get_local_height())
+        self.save_transactions()
+        self.storage.put('verified_tx3', self.verified_tx)
         self.storage.write()
 
     def wait_until_synchronized(self, callback=None):
@@ -1039,8 +1037,8 @@ class Abstract_Wallet(PrintError):
 
     def add_input_info(self, txin):
         # Add address for utxo that are in wallet
-        coins = self.get_spendable_coins()
         if txin.get('scriptSig') == '':
+            coins = self.get_spendable_coins()
             for item in coins:
                 if txin.get('prevout_hash') == item.get('prevout_hash') and txin.get('prevout_n') == item.get('prevout_n'):
                     txin['address'] = item.get('address')
@@ -1108,6 +1106,18 @@ class Abstract_Wallet(PrintError):
         addrs = self.get_unused_addresses()
         if addrs:
             return addrs[0]
+
+    def get_receiving_address(self):
+        # always return an address
+        domain = self.get_receiving_addresses()
+        choice = domain[0]
+        for addr in domain:
+            if not self.history.get(addr):
+                if addr not in self.receive_requests.keys():
+                    return addr
+                else:
+                    choice = addr
+        return choice
 
     def get_payment_status(self, address, amount):
         local_height = self.get_local_height()
@@ -1366,7 +1376,7 @@ class Imported_Wallet(Abstract_Wallet):
         txin['signatures'] = [None]
 
 
-class P2PK_Wallet(Abstract_Wallet):
+class P2PKH_Wallet(Abstract_Wallet):
 
     def pubkeys_to_address(self, pubkey):
         return public_key_to_bc_address(pubkey.decode('hex'))
@@ -1528,7 +1538,7 @@ class Deterministic_Wallet(Abstract_Wallet):
 
 
 
-class Standard_Wallet(Deterministic_Wallet, P2PK_Wallet):
+class Standard_Wallet(Deterministic_Wallet, P2PKH_Wallet):
     wallet_type = 'standard'
 
     def __init__(self, storage):
@@ -1609,7 +1619,7 @@ class Multisig_Wallet(Deterministic_Wallet):
 
     def pubkeys_to_address(self, pubkeys):
         redeem_script = Transaction.multisig_script(sorted(pubkeys), self.m)
-        address = hash_160_to_bc_address(hash_160(redeem_script.decode('hex')), 5)
+        address = hash_160_to_bc_address(hash_160(redeem_script.decode('hex')), bitcoin.ADDRTYPE_P2SH)
         return address
 
     def new_pubkeys(self, c, i):
@@ -1634,8 +1644,9 @@ class Multisig_Wallet(Deterministic_Wallet):
 
     def update_password(self, old_pw, new_pw):
         for name, keystore in self.keystores.items():
-            keystore.update_password(old_pw, new_pw)
-            self.storage.put(name, keystore.dump())
+            if keystore.can_change_password():
+                keystore.update_password(old_pw, new_pw)
+                self.storage.put(name, keystore.dump())
         self.storage.put('use_encryption', (new_pw is not None))
 
     def check_password(self, password):

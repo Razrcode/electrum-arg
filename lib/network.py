@@ -37,6 +37,7 @@ import socket
 import json
 
 import util
+import bitcoin
 from bitcoin import *
 from interface import Connection, Interface
 from blockchain import Blockchain
@@ -47,6 +48,13 @@ DEFAULT_PORTS = {'t':'50001', 's':'50002', 'h':'8081', 'g':'8082'}
 DEFAULT_SERVERS = {
     '52.58.50.77': DEFAULT_PORTS,
 }
+
+def set_testnet():
+    global DEFAULT_PORTS, DEFAULT_SERVERS
+    DEFAULT_PORTS = {'t':'51001', 's':'51002'}
+    DEFAULT_SERVERS = {
+        '': DEFAULT_PORTS,
+    }
 
 NODES_RETRY_INTERVAL = 60
 SERVER_RETRY_INTERVAL = 10
@@ -63,7 +71,7 @@ def parse_servers(result):
         pruning_level = '-'
         if len(item) > 2:
             for v in item[2]:
-                if re.match("[stgh]\d*", v):
+                if re.match("[st]\d*", v):
                     protocol, port = v[0], v[1:]
                     if port == '': port = DEFAULT_PORTS[protocol]
                     out[protocol] = port
@@ -83,7 +91,7 @@ def parse_servers(result):
 
     return servers
 
-def filter_protocol(hostmap = DEFAULT_SERVERS, protocol = 's'):
+def filter_protocol(hostmap, protocol = 's'):
     '''Filters the hostmap for those implementing protocol.
     The result is a list in serialized form.'''
     eligible = []
@@ -93,7 +101,9 @@ def filter_protocol(hostmap = DEFAULT_SERVERS, protocol = 's'):
             eligible.append(serialize_server(host, port, protocol))
     return eligible
 
-def pick_random_server(hostmap = DEFAULT_SERVERS, protocol = 's', exclude_set = set()):
+def pick_random_server(hostmap = None, protocol = 's', exclude_set = set()):
+    if hostmap is None:
+        hostmap = DEFAULT_SERVERS
     eligible = list(set(filter_protocol(hostmap, protocol)) - exclude_set)
     return random.choice(eligible) if eligible else None
 
@@ -689,6 +699,8 @@ class Network(util.DaemonThread):
 
     def on_get_header(self, interface, response):
         '''Handle receiving a single block header'''
+        if self.blockchain.downloading_headers:
+            return
         if self.bc_requests:
             req_if, data = self.bc_requests[0]
             req_height = data.get('header_height', -1)
@@ -711,6 +723,8 @@ class Network(util.DaemonThread):
         '''Send a request for the next header, or a chunk of them,
         if necessary.
         '''
+        if self.blockchain.downloading_headers:
+            return False
         local_height, if_height = self.get_local_height(), data['if_height']
         if if_height <= local_height:
             return False
@@ -729,14 +743,13 @@ class Network(util.DaemonThread):
             # If the connection was lost move on
             if not interface in self.interfaces.values():
                 continue
-
             req_time = data.get('req_time')
             if not req_time:
                 # No requests sent yet.  This interface has a new height.
                 # Request headers if it is ahead of our blockchain
                 if not self.bc_request_headers(interface, data):
                     continue
-            elif time.time() - req_time > 10:
+            elif time.time() - req_time > 20:
                 interface.print_error("blockchain request timed out")
                 self.connection_down(interface.server)
                 continue
@@ -751,7 +764,7 @@ class Network(util.DaemonThread):
             time.sleep(0.1)
             return
         rin = [i for i in self.interfaces.values()]
-        win = [i for i in self.interfaces.values() if i.unsent_requests]
+        win = [i for i in self.interfaces.values() if i.num_requests()]
         try:
             rout, wout, xout = select.select(rin, win, [], 0.1)
         except socket.error as (code, msg):
@@ -765,12 +778,7 @@ class Network(util.DaemonThread):
             self.process_responses(interface)
 
     def run(self):
-        import threading
-        t = threading.Thread(target = self.blockchain.init)
-        t.daemon = True
-        t.start()
-        while t.isAlive() and self.is_running():
-            t.join(1)
+        self.blockchain.init()
         while self.is_running():
             self.maintain_sockets()
             self.wait_on_sockets()
