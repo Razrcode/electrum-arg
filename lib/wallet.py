@@ -853,7 +853,7 @@ class Abstract_Wallet(PrintError):
         return tx
 
     def estimate_fee(self, config, size, outputs=[]):
-        fee = (1 + size / 1000) * MIN_RELAY_TX_FEE
+        fee = (1 + size / 1000) * bitcoin.MIN_RELAY_TX_FEE
         for _, _, value in outputs:
             if value < DUST_SOFT_LIMIT:
                 fee = (1 + size / 1000) * MIN_RELAY_TX_FEE + MIN_RELAY_TX_FEE
