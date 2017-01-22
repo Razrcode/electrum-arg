@@ -42,8 +42,6 @@ from interface import Connection, Interface
 from blockchain import Blockchain
 from version import ELECTRUM_VERSION, PROTOCOL_VERSION
 
-FEE_TARGETS = [25, 10, 5, 2]
-
 DEFAULT_PORTS = {'t':'50001', 's':'50002', 'h':'8081', 'g':'8082'}
 
 DEFAULT_SERVERS = {
@@ -178,7 +176,6 @@ class Network(util.DaemonThread):
 
         self.banner = ''
         self.donation_address = ''
-        self.fee_estimates = {}
         self.relay_fee = None
         self.heights = {}
         self.merkle_roots = {}
@@ -302,8 +299,6 @@ class Network(util.DaemonThread):
         self.queue_request('server.banner', [])
         self.queue_request('server.donation_address', [])
         self.queue_request('server.peers.subscribe', [])
-        for i in FEE_TARGETS:
-            self.queue_request('blockchain.estimatefee', [i])
         self.queue_request('blockchain.relayfee', [])
 
     def get_status_value(self, key):
@@ -311,8 +306,6 @@ class Network(util.DaemonThread):
             value = self.connection_status
         elif key == 'banner':
             value = self.banner
-        elif key == 'fee':
-            value = self.fee_estimates
         elif key == 'updated':
             value = (self.get_local_height(), self.get_server_height())
         elif key == 'servers':
@@ -501,11 +494,6 @@ class Network(util.DaemonThread):
         elif method == 'server.donation_address':
             if error is None:
                 self.donation_address = result
-        elif method == 'blockchain.estimatefee':
-            if error is None:
-                i = params[0]
-                self.fee_estimates[i] = int(result * COIN)
-                self.notify('fee')
         elif method == 'blockchain.relayfee':
             if error is None:
                 self.relay_fee = int(result * COIN)
