@@ -773,7 +773,7 @@ class Transaction:
         fee = 0
         for addr, value in self.get_outputs():
             if value < DUST_SOFT_LIMIT:
-                fee += (1 + size / 1000) * MIN_RELAY_TX_FEE
+                fee += (1 + size / 1000) * bitcoin.MIN_RELAY_TX_FEE
         threshold = 768000000
         weight = 0
         for txin in self.inputs():
@@ -783,7 +783,7 @@ class Transaction:
         print_error(priority, threshold)
         if size < 26000 and fee == 0 and priority > threshold:
             return 0
-        fee += (1 + size / 1000) * MIN_RELAY_TX_FEE
+        fee += (1 + size / 1000) * bitcoin.MIN_RELAY_TX_FEE
         print_error(fee)
         return fee
 

@@ -856,7 +856,7 @@ class Abstract_Wallet(PrintError):
         fee = (1 + size / 1000) * bitcoin.MIN_RELAY_TX_FEE
         for _, _, value in outputs:
             if value < DUST_SOFT_LIMIT:
-                fee = (1 + size / 1000) * MIN_RELAY_TX_FEE + MIN_RELAY_TX_FEE
+                fee += bitcoin.MIN_RELAY_TX_FEE
         return fee
 
     def mktx(self, outputs, password, config, fee=None, change_addr=None, domain=None):

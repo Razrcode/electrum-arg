@@ -999,7 +999,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
         self.fee_e_label = HelpLabel(_('Fee'), msg)
 
         def fee_cb(pos, fee_rate):
-            self.config.set_key('fee_per_kb', fee_rate, False)
+            self.config.set_key('fee_per_kb', fee_rate, True)
             self.spend_max() if self.is_max else self.update_fee()
 
         self.fee_e = BTCAmountEdit(self.get_decimal_point)
@@ -2359,6 +2359,24 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
         nz.valueChanged.connect(on_nz)
         gui_widgets.append((nz_label, nz))
 
+        msg = _('Fee per kilobyte of transaction.')
+        fee_label = HelpLabel(_('Transaction fee per kb') + ':', msg)
+        fee_e = BTCkBEdit(self.get_decimal_point)
+        def on_fee(is_done):
+            v = fee_e.get_amount() or 0
+            self.config.set_key('fee_per_kb', v, is_done)
+            self.update_fee()
+        fee_e.editingFinished.connect(lambda: on_fee(True))
+        fee_e.textEdited.connect(lambda: on_fee(False))
+        fee_widgets.append((fee_label, fee_e))
+
+        def update_feeperkb():
+            fee_e.setAmount(self.config.get('fee_per_kb', bitcoin.MIN_RELAY_TX_FEE))
+            fee_e.setEnabled(True)
+        update_feeperkb()
+
+        #slider_moved()
+
         feebox_cb = QCheckBox(_('Edit fees manually'))
         feebox_cb.setChecked(self.config.get('show_fee', True))
         feebox_cb.setToolTip(_("Show fee edit box in send tab."))
@@ -2735,7 +2753,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
         vbox.addWidget(fee_e)
 
         def on_rate(pos, fee_rate):
-            fee = fee_rate * tx_size / 1000
+            fee = bitcoin.MIN_RELAY_TX_FEE * tx_size / 1000
             fee_e.setAmount(fee)
         cb = QCheckBox(_('Final'))
         vbox.addWidget(cb)
