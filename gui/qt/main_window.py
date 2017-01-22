@@ -1266,8 +1266,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
         if extra_fee:
             msg.append( _("Additional fees") + ": " + self.format_amount_and_units(extra_fee) )
 
-        confirm_rate = 2 * self.config.max_fee_rate()
-        if tx.get_fee() > confirm_rate * tx.estimated_size() / 1000:
+        if tx.get_fee() > self.config.get('confirm_fee', 50000000):
             msg.append(_('Warning') + ': ' + _("The fee for this transaction seems unusually high."))
 
         if self.wallet.has_password():

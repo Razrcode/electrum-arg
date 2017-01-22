@@ -752,7 +752,6 @@ class Transaction:
     def get_output_addresses(self):
         return [addr for addr, val in self.get_outputs()]
 
-
     def has_address(self, addr):
         return (addr in self.get_output_addresses()) or (addr in (tx.get("address") for tx in self.inputs()))
 

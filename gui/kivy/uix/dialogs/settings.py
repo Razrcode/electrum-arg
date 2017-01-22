@@ -203,12 +203,8 @@ class SettingsDialog(Factory.Popup):
         d.open()
 
     def fee_status(self):
-        if self.config.get('dynamic_fees', True):
-            from electrum.util import fee_levels
-            return fee_levels[self.config.get('fee_level', 2)]
-        else:
-            F = self.config.get('fee_per_kb', RECOMMENDED_FEE)
-            return self.app.format_amount_and_units(F) + '/kB'
+        F = self.config.get('fee_per_kb', RECOMMENDED_FEE)
+        return self.app.format_amount_and_units(F) + '/kB'
 
     def fee_dialog(self, label, dt):
         if self._fee_dialog is None:

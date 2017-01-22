@@ -194,15 +194,15 @@ class SimpleConfig(PrintError):
             path = wallet.storage.path
             self.set_key('gui_last_wallet', path)
 
-    def max_fee_rate(self):
-        return self.get('max_fee_rate', MAX_FEE_RATE)
+    # def max_fee_rate(self):
+    #     return self.get('max_fee_rate', MAX_FEE_RATE)
 
-    def has_fee_estimates(self):
-        return len(self.fee_estimates)==4
+    # def has_fee_estimates(self):
+    #     return len(self.fee_estimates)==4
 
-    def fee_per_kb(self):
-        fee_rate = self.get('fee_per_kb', self.max_fee_rate()/2)
-        return fee_rate
+    # def fee_per_kb(self):
+    #     fee_rate = self.get('fee_per_kb', tx.estimated_size()/2)
+    #     return fee_rate
 
 def read_system_config(path=SYSTEM_CONFIG_PATH):
     """Parse and return the system config settings in /etc/electrum-arg.conf."""
