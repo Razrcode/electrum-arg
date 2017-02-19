@@ -759,6 +759,7 @@ class Abstract_Wallet(PrintError):
             tx = self.transactions.get(tx_hash)
             if not tx:
                 return 3, 'unknown'
+            is_final = tx and tx.is_final()
             fee = self.tx_fees.get(tx_hash)
             if fee and self.network:
                 size = len(tx.raw)/2
@@ -852,11 +853,8 @@ class Abstract_Wallet(PrintError):
         run_hook('make_unsigned_transaction', self, tx)
         return tx
 
-    def estimate_fee(self, config, size, outputs=[]):
+    def estimate_fee(self, config, size):
         fee = (1 + size / 1000) * bitcoin.MIN_RELAY_TX_FEE
-        for _, _, value in outputs:
-            if value < DUST_SOFT_LIMIT:
-                fee += bitcoin.MIN_RELAY_TX_FEE
         return fee
 
     def mktx(self, outputs, password, config, fee=None, change_addr=None, domain=None):

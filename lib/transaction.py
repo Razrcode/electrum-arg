@@ -770,10 +770,12 @@ class Transaction:
     def requires_fee(self, wallet):
         # see https://en.bitcoin.it/wiki/Transaction_fees
         size = len(self.serialize(-1))/2
+        if size >= 49000:
+            return True
         fee = 0
         for addr, value in self.get_outputs():
-            if value < DUST_SOFT_LIMIT:
-                fee += (1 + size / 1000) * bitcoin.MIN_RELAY_TX_FEE
+            if value < 27300:
+                print_error (dust_threshold)
         threshold = 768000000
         weight = 0
         for txin in self.inputs():
@@ -786,7 +788,6 @@ class Transaction:
         fee += (1 + size / 1000) * bitcoin.MIN_RELAY_TX_FEE
         print_error(fee)
         return fee
-
 
 
 def tx_from_str(txt):

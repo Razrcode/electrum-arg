@@ -57,10 +57,10 @@ def set_testnet():
 
 ################################## transactions
 
-DUST_SOFT_LIMIT = 50000
 MIN_RELAY_TX_FEE = 50000
 RECOMMENDED_FEE = 50000
-COINBASE_MATURITY = 30
+COINBASE_MATURITY = 10
+#COINBASE_MATURITYV2 = 100
 COIN = 100000000
 
 # supported types of transction outputs
