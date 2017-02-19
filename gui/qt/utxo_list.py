@@ -55,7 +55,7 @@ class UTXOList(MyTreeWidget):
             self.addChild(utxo_item)
 
     def create_menu(self, position):
-        from electrum.wallet import Multisig_Wallet
+        from electrum_arg.wallet import Multisig_Wallet
         selected = [ x.data(0, Qt.UserRole).toString() for x in self.selectedItems()]
         if not selected:
             return

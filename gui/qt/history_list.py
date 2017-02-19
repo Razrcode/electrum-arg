@@ -30,7 +30,7 @@ from util import *
 from electrum_arg.i18n import _
 from electrum_arg.util import block_explorer_URL, format_satoshis, format_time
 from electrum_arg.plugins import run_hook
-from electrum.util import timestamp_to_datetime, profiler
+from electrum_arg.util import timestamp_to_datetime, profiler
 
 
 TX_ICONS = [

@@ -205,7 +205,7 @@ class Wallet_2fa(Multisig_Wallet):
         return get_user_id(self.storage)
 
     def get_max_amount(self, config, inputs, recipient, fee):
-        from electrum.transaction import Transaction
+        from electrum_arg.transaction import Transaction
         sendable = sum(map(lambda x:x['value'], inputs))
         for i in inputs:
             self.add_input_info(i)
@@ -524,7 +524,7 @@ class TrustedCoinPlugin(BasePlugin):
         challenge = r.get('challenge')
         message = 'TRUSTEDCOIN CHALLENGE: ' + challenge
         def f(xprv):
-            from electrum.bitcoin import deserialize_xkey, bip32_private_key, regenerate_key, is_compressed
+            from electrum_arg.bitcoin import deserialize_xkey, bip32_private_key, regenerate_key, is_compressed
             _, _, _, c, k = deserialize_xkey(xprv)
             pk = bip32_private_key([0, 0], k, c)
             key = regenerate_key(pk)
